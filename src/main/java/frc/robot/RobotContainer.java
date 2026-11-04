@@ -86,9 +86,6 @@ final var idle = new SwerveRequest.Idle();
 final var autoDrive = new SwerveRequest.RobotCentric()
     .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-
-
-
         return Commands.sequence(
             Commands.print("AUTONOMOUS SEQUENCE STARTED!"),
 
