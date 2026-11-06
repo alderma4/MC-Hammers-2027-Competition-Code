@@ -10,6 +10,8 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Pose2d;
+//import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -77,39 +79,66 @@ public class RobotContainer {
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
-    public Command getAutonomousCommand() {
-        System.out.println("AUTONOMOUS COMMAND REQUESTED!");
-        
-// Simple drive forward auton
-final var idle = new SwerveRequest.Idle();
+public Command getAutonomousCommand() {
+    System.out.println("AUTONOMOUS COMMAND REQUESTED!");
 
-final var autoDrive = new SwerveRequest.RobotCentric()
-    .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+    // Robot-relative drive request using closed-loop velocity control.
+    final var autoDrive = new SwerveRequest.RobotCentric()
+        .withDriveRequestType(DriveRequestType.Velocity);
 
+    final var idle = new SwerveRequest.Idle();
 
+    return Commands.sequence(
+        Commands.print("AUTONOMOUS SEQUENCE STARTED!"),
 
+        // Record pose before resetting.
+        Commands.runOnce(() ->
+            System.out.println("BEFORE RESET: " + drivetrain.getState().Pose)
+        ),
 
-        return Commands.sequence(
-            Commands.print("AUTONOMOUS SEQUENCE STARTED!"),
+        // Reset odometry to (0, 0, 0 degrees).
+        drivetrain.runOnce(() ->
+            drivetrain.resetPose(
+                new Pose2d(0.0, 0.0, Rotation2d.kZero)
+            )
+        ),
 
-            // Reset our field centric heading to match the robot
-            // facing away from our alliance station wall (0 deg).
-            drivetrain.runOnce(() -> drivetrain.seedFieldCentric(Rotation2d.kZero)),
-            // Then slowly drive forward (away from us) for 5 seconds.
-            Commands.print("AUTONOMOUS DRIVE STARTED!"),
+        // Allow odometry to update before driving.
+        Commands.waitSeconds(0.5),
 
+        // Record pose after resetting.
+        Commands.runOnce(() ->
+            System.out.println("AFTER RESET: " + drivetrain.getState().Pose)
+        ),
+
+        Commands.print("AUTONOMOUS DRIVE STARTED!"),
+
+        // Rotate counterclockwise at 0.5 rad/s until heading reaches 90 degrees.
+        // Stop after 6 seconds if the target isn't reached.
         drivetrain.applyRequest(() ->
-            autoDrive.withVelocityX(0.5)
-                .withVelocityY(0)
-                .withRotationalRate(0)
+            autoDrive.withVelocityX(0.0)
+                .withVelocityY(0.0)
+                .withRotationalRate(0.5)
         )
-            .withTimeout(5.0)
-            .beforeStarting(() ->
-                System.out.println("DRIVE COMMAND SCHEDULED!")
-            ),
+        .until(() ->
+                drivetrain.getState().Pose.getRotation().getRadians() >= Math.PI / 2.0
+        )
+        .withTimeout(6.0),
 
-            // Finally idle for the rest of auton
-            drivetrain.applyRequest(() -> idle)
-        );
-    }
+        // Stop immediately after the drive command finishes.
+        drivetrain.runOnce(() ->
+            drivetrain.setControl(idle)
+        ),
+
+        // Record the final pose.
+        Commands.runOnce(() ->
+            System.out.println("FINAL POSE: " + drivetrain.getState().Pose)
+        ),
+
+        Commands.print("AUTONOMOUS SEQUENCE FINISHED!"),
+
+        // Keep the drivetrain idle for the remainder of autonomous.
+        drivetrain.applyRequest(() -> idle)
+    );
+}
 }
