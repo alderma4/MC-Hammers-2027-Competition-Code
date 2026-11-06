@@ -11,6 +11,10 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -122,15 +126,61 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param drivetrainConstants   Drivetrain-wide constants for the swerve drive
      * @param modules               Constants for each specific module
      */
-    public CommandSwerveDrivetrain(
-        SwerveDrivetrainConstants drivetrainConstants,
-        SwerveModuleConstants<?, ?, ?>... modules
-    ) {
-        super(drivetrainConstants, modules);
-        if (Utils.isSimulation()) {
-            startSimThread();
-        }
+public CommandSwerveDrivetrain(
+    SwerveDrivetrainConstants drivetrainConstants,
+    SwerveModuleConstants<?, ?, ?>... modules
+) {
+    super(drivetrainConstants, modules);
+
+    configurePathPlanner();
+
+    if (Utils.isSimulation()) {
+        startSimThread();
     }
+}
+
+
+
+
+
+private void configurePathPlanner() {
+    try {
+        RobotConfig config = RobotConfig.fromGUISettings();
+
+        AutoBuilder.configure(
+            () -> getState().Pose,
+            this::resetPose,
+            () -> getState().Speeds,
+            (speeds, feedforwards) -> setControl(
+                new SwerveRequest.ApplyRobotSpeeds()
+                    .withSpeeds(speeds)
+                    .withWheelForceFeedforwardsX(
+                        feedforwards.robotRelativeForcesXNewtons()
+                    )
+                    .withWheelForceFeedforwardsY(
+                        feedforwards.robotRelativeForcesYNewtons()
+                    )
+            ),
+            new PPHolonomicDriveController(
+                new com.pathplanner.lib.config.PIDConstants(5.0, 0.0, 0.0),
+                new com.pathplanner.lib.config.PIDConstants(5.0, 0.0, 0.0)
+            ),
+            config,
+            () -> DriverStation.getAlliance()
+                .map(alliance -> alliance == Alliance.Red)
+                .orElse(false),
+            this
+        );
+
+    } catch (Exception e) {
+        DriverStation.reportError(
+            "Failed to configure PathPlanner",
+            e.getStackTrace()
+        );
+    }
+}
+
+
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.

@@ -9,6 +9,10 @@ import static edu.wpi.first.units.Units.*;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Pose2d;
 //import edu.wpi.first.math.geometry.Translation2d;
@@ -37,10 +41,16 @@ public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(0);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final SendableChooser<Command> autoChooser = new SendableChooser<>();
 
-    public RobotContainer() {
-        configureBindings();
-    }
+public RobotContainer() {
+    configureBindings();
+
+    autoChooser.setDefaultOption("90 Degree Rotation Test", getRotationTestCommand());
+    autoChooser.addOption("PathPlanner - Forward 1 Meter",AutoBuilder.buildAuto("Forward1MeterAuto"));
+    autoChooser.addOption("PathPlanner - Strafe Left 1 Meter",AutoBuilder.buildAuto("StrafeLeft1MeterAuto"));
+    SmartDashboard.putData("Auto Selector", autoChooser);
+}
 
     private void configureBindings() {
         // Note that X is defined as forward according to WPILib convention,
@@ -79,7 +89,7 @@ public class RobotContainer {
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
-public Command getAutonomousCommand() {
+private Command getRotationTestCommand() {
     System.out.println("AUTONOMOUS COMMAND REQUESTED!");
 
     // Robot-relative drive request using closed-loop velocity control.
@@ -140,5 +150,10 @@ public Command getAutonomousCommand() {
         // Keep the drivetrain idle for the remainder of autonomous.
         drivetrain.applyRequest(() -> idle)
     );
+}
+
+public Command getAutonomousCommand() {
+    return autoChooser.getSelected();
+
 }
 }
