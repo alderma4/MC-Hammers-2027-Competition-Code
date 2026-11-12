@@ -10,10 +10,14 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import edu.wpi.first.networktables.StructPublisher;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -38,6 +42,11 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
  * https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/tuner-swerve/index.html
  */
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
+    private final NetworkTable limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
+    private final StructPublisher<Pose2d> visionPosePublisher =
+        NetworkTableInstance.getDefault()
+            .getStructTopic("Vision/MegaTag2Pose", Pose2d.struct)
+            .publish();
     private static final double kSimLoopPeriod = 0.004; // 4 ms
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
@@ -139,10 +148,6 @@ public CommandSwerveDrivetrain(
     }
 }
 
-
-
-
-
 private void configurePathPlanner() {
     try {
         RobotConfig config = RobotConfig.fromGUISettings();
@@ -179,8 +184,6 @@ private void configurePathPlanner() {
         );
     }
 }
-
-
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -289,6 +292,26 @@ private void configurePathPlanner() {
                 m_hasAppliedOperatorPerspective = true;
             });
         }
+    
+    double robotYawDegrees =
+        getState().Pose.getRotation().getDegrees();
+
+    limelightTable.getEntry("robot_orientation_set")
+        .setDoubleArray(new double[] {
+            robotYawDegrees, 0, 0, 0, 0, 0});
+    double[] mt2 = limelightTable
+        .getEntry("botpose_orb_wpiblue")
+        .getDoubleArray(new double[0]);
+
+    if (mt2.length >= 8 && mt2[7] > 0) {
+        Pose2d visionPose = new Pose2d(
+            mt2[0],
+            mt2[1],
+        Rotation2d.fromDegrees(mt2[5])
+        );
+
+    visionPosePublisher.set(visionPose);
+}
     }
 
     private void startSimThread() {
