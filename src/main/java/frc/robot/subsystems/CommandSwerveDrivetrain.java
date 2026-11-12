@@ -43,6 +43,8 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
  */
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
     private final NetworkTable limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
+    private boolean visionPoseInitialized = false;
+
     private final StructPublisher<Pose2d> visionPosePublisher =
         NetworkTableInstance.getDefault()
             .getStructTopic("Vision/MegaTag2Pose", Pose2d.struct)
@@ -140,7 +142,7 @@ public CommandSwerveDrivetrain(
     SwerveModuleConstants<?, ?, ?>... modules
 ) {
     super(drivetrainConstants, modules);
-
+    limelightTable.getEntry("initialize_pose").setDefaultBoolean(false);
     configurePathPlanner();
 
     if (Utils.isSimulation()) {
@@ -311,6 +313,21 @@ private void configurePathPlanner() {
         );
 
     visionPosePublisher.set(visionPose);
+    if (!visionPoseInitialized
+        && limelightTable.getEntry("initialize_pose").getBoolean(false)
+        && DriverStation.isDisabled()
+        && visionPose.getX() >= 0.0
+        && visionPose.getX() <= 4.0
+        && visionPose.getY() >= 0.0
+        && visionPose.getY() <= 4.0
+        && Math.abs(
+            getState().Pose.getRotation().getDegrees()
+            - visionPose.getRotation().getDegrees()
+        ) < 10.0) {
+
+    resetPose(visionPose);
+    visionPoseInitialized = true;
+}
 }
     }
 
