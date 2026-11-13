@@ -43,7 +43,7 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
  */
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
     private final NetworkTable limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
-    private boolean visionPoseInitialized = false;
+    private boolean previousInitializePoseRequest = false;
 
     private final StructPublisher<Pose2d> visionPosePublisher =
         NetworkTableInstance.getDefault()
@@ -275,61 +275,71 @@ private void configurePathPlanner() {
         return m_sysIdRoutineToApply.dynamic(direction);
     }
 
-    @Override
-    public void periodic() {
-        /*
-         * Periodically try to apply the operator perspective.
-         * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
-         * This allows us to correct the perspective in case the robot code restarts mid-match.
-         * Otherwise, only check and apply the operator perspective if the DS is disabled.
-         * This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
-         */
-        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
-            DriverStation.getAlliance().ifPresent(allianceColor -> {
-                setOperatorPerspectiveForward(
-                    allianceColor == Alliance.Red
-                        ? kRedAlliancePerspectiveRotation
-                        : kBlueAlliancePerspectiveRotation
-                );
-                m_hasAppliedOperatorPerspective = true;
-            });
-        }
-    
+@Override
+public void periodic() {
+    /*
+     * Apply the operator perspective when appropriate.
+     */
+    if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+        DriverStation.getAlliance().ifPresent(allianceColor -> {
+            setOperatorPerspectiveForward(
+                allianceColor == Alliance.Red
+                    ? kRedAlliancePerspectiveRotation
+                    : kBlueAlliancePerspectiveRotation
+            );
+            m_hasAppliedOperatorPerspective = true;
+        });
+    }
+
+    // Send the drivetrain heading to Limelight for MegaTag2.
     double robotYawDegrees =
         getState().Pose.getRotation().getDegrees();
 
     limelightTable.getEntry("robot_orientation_set")
         .setDoubleArray(new double[] {
-            robotYawDegrees, 0, 0, 0, 0, 0});
+            robotYawDegrees, 0, 0, 0, 0, 0
+        });
+
+    // Read the MegaTag2 pose.
     double[] mt2 = limelightTable
         .getEntry("botpose_orb_wpiblue")
         .getDoubleArray(new double[0]);
+
+    // Read the initialization toggle.
+    boolean initializePoseRequested =
+        limelightTable.getEntry("initialize_pose").getBoolean(false);
 
     if (mt2.length >= 8 && mt2[7] > 0) {
         Pose2d visionPose = new Pose2d(
             mt2[0],
             mt2[1],
-        Rotation2d.fromDegrees(mt2[5])
+            Rotation2d.fromDegrees(mt2[5])
         );
 
-    visionPosePublisher.set(visionPose);
-    if (!visionPoseInitialized
-        && limelightTable.getEntry("initialize_pose").getBoolean(false)
-        && DriverStation.isDisabled()
-        && visionPose.getX() >= 0.0
-        && visionPose.getX() <= 4.0
-        && visionPose.getY() >= 0.0
-        && visionPose.getY() <= 4.0
-        && Math.abs(
-            getState().Pose.getRotation().getDegrees()
-            - visionPose.getRotation().getDegrees()
-        ) < 10.0) {
+        // Publish the vision pose for AdvantageScope.
+        visionPosePublisher.set(visionPose);
 
-    resetPose(visionPose);
-    visionPoseInitialized = true;
-}
-}
+        // Initialize only on a new button press while disabled.
+        if (initializePoseRequested
+            && !previousInitializePoseRequest
+            && DriverStation.isDisabled()
+            && visionPose.getX() >= 0.0
+            && visionPose.getX() <= 4.0
+            && visionPose.getY() >= 0.0
+            && visionPose.getY() <= 4.0
+            && Math.abs(
+                getState().Pose.getRotation()
+                    .minus(visionPose.getRotation())
+                    .getDegrees()
+            ) < 10.0) {
+
+            resetPose(visionPose);
+        }
     }
+
+    // Update AFTER checking for a new button press.
+    previousInitializePoseRequest = initializePoseRequested;
+}
 
     private void startSimThread() {
         m_lastSimTime = Utils.getCurrentTimeSeconds();
