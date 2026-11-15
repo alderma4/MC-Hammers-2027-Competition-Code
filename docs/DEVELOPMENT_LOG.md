@@ -36,3 +36,12 @@ This log distinguishes planned work, code/hardware changes, and results verified
 - [ ] Decide whether slew-rate limiting is needed
 - [ ] Inspect and implement continuous vision fusion in small, testable steps
 - [ ] Log test results and any new competition-transition tasks
+
+## 2026-11-15 — Required opposite-facing AprilTag localization test
+
+- **Status:** Planned; **not yet verified**.
+- **Observation:** Recent localization testing had the robot facing only AprilTag 6.
+- **Required next test:** Orient the robot toward **AprilTag 1**, at the approximately **189° robot heading** identified for the practice setup, and verify localization.
+- **Record:** Known physical heading and position, Limelight reported MegaTag2 pose and heading, drivetrain/gyro heading, any MegaTag1-vs-MegaTag2 disagreement, and whether the estimate remains stable when rotating between orientations.
+- **Why:** Check for orientation-dependent errors, including a possible 180° discrepancy seen in earlier-season vision work. Do not declare vision fusion verified until this direction is tested.
+- **Note:** Confirm the actual measured robot heading at test time; the 189° value is the planned test orientation, not a measurement from this session.
