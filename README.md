@@ -40,3 +40,10 @@ This section documents the current offseason practice robot configuration. Hardw
 The drivetrain CAN IDs, gearing, wheel diameter, and module spacing are defined in `src/main/java/frc/robot/generated/TunerConstants.java`. The CANdle assignment is documented from the team's hardware setup, not that generated drivetrain file.
 
 The REV Power Distribution Hub (PDH) is not included in the 14-device CAN count; it communicates separately from the CTRE CAN network.
+
+## Development Documentation
+
+- [Development process](docs/DEVELOPMENT_PROCESS.md): how we document hardware, code, testing, and verification.
+- [Development log](docs/DEVELOPMENT_LOG.md): changes, test results, next steps, and practice-to-competition transition reminders.
+
+**Status convention:** Planned = not built/coded; Implemented = built/coded but not yet verified; Verified = tested with recorded results.
