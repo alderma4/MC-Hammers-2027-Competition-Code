@@ -20,6 +20,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.VecBuilder;
 
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -51,6 +52,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         .subscribe(new double[0]);
 
     private boolean previousInitializePoseRequest = false;
+    // Temporary testing control for continuous vision fusion.
+    // Fusion is disabled unless explicitly enabled in AdvantageScope.
+    private boolean fusionEnabled = false;
+    private boolean poseInitializedFromVision = false;
+    private int fusionAcceptedCount = 0;
+    private int fusionRejectedCount = 0;
 
     // Remember the last MegaTag2 update we processed.
     private long lastProcessedMt2Timestamp = 0;
@@ -153,6 +160,11 @@ public CommandSwerveDrivetrain(
 ) {
     super(drivetrainConstants, modules);
     limelightTable.getEntry("initialize_pose").setDefaultBoolean(false);
+    NetworkTableInstance.getDefault()
+        .getTable("Vision")
+        .getEntry("EnableFusion")
+        .setBoolean(false); // Explicitly OFF on every robot-code startup.
+
     configurePathPlanner();
 
     if (Utils.isSimulation()) {
@@ -327,6 +339,10 @@ public void periodic() {
     visionTable.getEntry("MegaTag2Valid").setBoolean(validPose);
     visionTable.getEntry("MegaTag2NewUpdate").setBoolean(newMt2Measurement);
 
+    // Only allow fusion after a successful disabled-mode pose initialization.
+    // A retained NetworkTables value must not bypass this startup safeguard.
+    fusionEnabled = visionTable.getEntry("EnableFusion").getBoolean(false);
+
     // Keep the last plotted pose for visual comparison, but do not mistake
     // it for a current detection: check MegaTag2Valid alongside the plot.
     Pose2d visionPose = null;
@@ -336,12 +352,47 @@ public void periodic() {
             visionPosePublisher.set(visionPose);
         }
 
-        // Prepared for a later fusion step; no measurement is fused yet.
-        // mt2[6] is reported latency in milliseconds.
+        // Limelight latency is in milliseconds; NT timestamp is FPGA microseconds.
         double latencySeconds = mt2[6] / 1000.0;
         double visionTimestamp = mt2Timestamp / 1_000_000.0 - latencySeconds;
-        // Intentionally do not call addVisionMeasurement() yet.
+        double measurementAgeSeconds =
+            RobotController.getFPGATime() / 1_000_000.0 - visionTimestamp;
+
+        visionTable.getEntry("MegaTag2MeasurementAgeSeconds")
+            .setDouble(measurementAgeSeconds);
+
+        boolean poseInBounds =
+            visionPose.getX() >= 0.0 && visionPose.getX() <= 4.0
+            && visionPose.getY() >= 0.0 && visionPose.getY() <= 4.0;
+        boolean validMeasurementTime =
+            Double.isFinite(visionTimestamp)
+            && Double.isFinite(measurementAgeSeconds)
+            && Double.isFinite(latencySeconds)
+            && latencySeconds >= 0.0 && latencySeconds < 0.25
+            && measurementAgeSeconds >= 0.0 && measurementAgeSeconds < 0.25;
+        double positionDifference = getState().Pose.getTranslation()
+            .getDistance(visionPose.getTranslation());
+        boolean reasonablePosition = positionDifference < 0.50;
+
+        if (fusionEnabled && poseInitializedFromVision && newMt2Measurement) {
+            if (poseInBounds && validMeasurementTime && reasonablePosition) {
+                // Use vision for XY, effectively ignore vision heading.
+                // This class's override converts FPGA time to CTRE time.
+                addVisionMeasurement(
+                    visionPose, visionTimestamp,
+                    VecBuilder.fill(0.30, 0.30, 9999999.0)
+                );
+                fusionAcceptedCount++;
+            } else {
+                fusionRejectedCount++;
+            }
+        }
     }
+
+    visionTable.getEntry("FusionEnabled").setBoolean(fusionEnabled);
+    visionTable.getEntry("FusionArmed").setBoolean(poseInitializedFromVision);
+    visionTable.getEntry("FusionAcceptedCount").setDouble(fusionAcceptedCount);
+    visionTable.getEntry("FusionRejectedCount").setDouble(fusionRejectedCount);
 
     // Existing manual initialization button: conservative safeguards restored.
     // This cannot fix an incorrect initial gyro/field heading by itself.
@@ -355,6 +406,7 @@ public void periodic() {
         && Math.abs(getState().Pose.getRotation()
             .minus(visionPose.getRotation()).getDegrees()) < 10.0) {
         resetPose(visionPose);
+        poseInitializedFromVision = true;
         visionTable.getEntry("InitializePoseAccepted").setBoolean(true);
     } else if (initializePressed) {
         visionTable.getEntry("InitializePoseAccepted").setBoolean(false);
