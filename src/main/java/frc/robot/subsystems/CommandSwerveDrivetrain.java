@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.Volts;
 
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -10,20 +11,21 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import edu.wpi.first.networktables.StructPublisher;
-
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.DoubleArraySubscriber;
+
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
@@ -31,7 +33,6 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 /**
@@ -43,7 +44,16 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
  */
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
     private final NetworkTable limelightTable = NetworkTableInstance.getDefault().getTable("limelight");
+
+    // Subscribe to MegaTag2 updates so pose and timestamp stay together.
+    private final DoubleArraySubscriber mt2Subscriber =
+    limelightTable.getDoubleArrayTopic("botpose_orb_wpiblue")
+        .subscribe(new double[0]);
+
     private boolean previousInitializePoseRequest = false;
+
+    // Remember the last MegaTag2 update we processed.
+    private long lastProcessedMt2Timestamp = 0;
 
     private final StructPublisher<Pose2d> visionPosePublisher =
         NetworkTableInstance.getDefault()
@@ -277,9 +287,7 @@ private void configurePathPlanner() {
 
 @Override
 public void periodic() {
-    /*
-     * Apply the operator perspective when appropriate.
-     */
+    // Preserve CTRE's alliance-relative driver perspective.
     if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
         DriverStation.getAlliance().ifPresent(allianceColor -> {
             setOperatorPerspectiveForward(
@@ -291,53 +299,70 @@ public void periodic() {
         });
     }
 
-    // Send the drivetrain heading to Limelight for MegaTag2.
-    double robotYawDegrees =
-        getState().Pose.getRotation().getDegrees();
-
+    // MegaTag2 needs the drivetrain's estimated FIELD heading.
+    // This does not establish the correct starting heading by itself.
+    double robotYawDegrees = getState().Pose.getRotation().getDegrees();
     limelightTable.getEntry("robot_orientation_set")
-        .setDoubleArray(new double[] {
-            robotYawDegrees, 0, 0, 0, 0, 0
-        });
+        .setDoubleArray(new double[] { robotYawDegrees, 0, 0, 0, 0, 0 });
 
-    // Read the MegaTag2 pose.
-    double[] mt2 = limelightTable
-        .getEntry("botpose_orb_wpiblue")
-        .getDoubleArray(new double[0]);
+    // Read pose and NetworkTables timestamp from the same update.
+    var mt2Update = mt2Subscriber.getAtomic();
+    double[] mt2 = mt2Update.value;
+    long mt2Timestamp = mt2Update.timestamp;
+    boolean newMt2Measurement = mt2Timestamp > lastProcessedMt2Timestamp;
 
-    // Read the initialization toggle.
-    boolean initializePoseRequested =
-        limelightTable.getEntry("initialize_pose").getBoolean(false);
+    // NetworkTables update age, not necessarily the camera image's age.
+    double mt2AgeSeconds = mt2Timestamp > 0
+        ? (RobotController.getFPGATime() - mt2Timestamp) / 1_000_000.0
+        : Double.POSITIVE_INFINITY;
+    boolean freshUpdate = mt2AgeSeconds >= 0.0 && mt2AgeSeconds < 0.25;
+    boolean hasTag = mt2.length >= 8 && mt2[7] > 0;
+    boolean validPose = hasTag && freshUpdate
+        && Double.isFinite(mt2[0]) && Double.isFinite(mt2[1])
+        && Double.isFinite(mt2[5]) && Double.isFinite(mt2[6]);
 
-    if (mt2.length >= 8 && mt2[7] > 0) {
-        Pose2d visionPose = new Pose2d(
-            mt2[0],
-            mt2[1],
-            Rotation2d.fromDegrees(mt2[5])
-        );
+    NetworkTable visionTable = NetworkTableInstance.getDefault().getTable("Vision");
+    visionTable.getEntry("MegaTag2AgeSeconds").setDouble(mt2AgeSeconds);
+    visionTable.getEntry("MegaTag2HasTag").setBoolean(hasTag);
+    visionTable.getEntry("MegaTag2Valid").setBoolean(validPose);
+    visionTable.getEntry("MegaTag2NewUpdate").setBoolean(newMt2Measurement);
 
-        // Publish the vision pose for AdvantageScope.
-        visionPosePublisher.set(visionPose);
-
-        // Initialize only on a new button press while disabled.
-        if (initializePoseRequested
-            && !previousInitializePoseRequest
-            && DriverStation.isDisabled()
-            && visionPose.getX() >= 0.0
-            && visionPose.getX() <= 4.0
-            && visionPose.getY() >= 0.0
-            && visionPose.getY() <= 4.0
-            && Math.abs(
-                getState().Pose.getRotation()
-                    .minus(visionPose.getRotation())
-                    .getDegrees()
-            ) < 10.0) {
-
-            resetPose(visionPose);
+    // Keep the last plotted pose for visual comparison, but do not mistake
+    // it for a current detection: check MegaTag2Valid alongside the plot.
+    Pose2d visionPose = null;
+    if (validPose) {
+        visionPose = new Pose2d(mt2[0], mt2[1], Rotation2d.fromDegrees(mt2[5]));
+        if (newMt2Measurement) {
+            visionPosePublisher.set(visionPose);
         }
+
+        // Prepared for a later fusion step; no measurement is fused yet.
+        // mt2[6] is reported latency in milliseconds.
+        double latencySeconds = mt2[6] / 1000.0;
+        double visionTimestamp = mt2Timestamp / 1_000_000.0 - latencySeconds;
+        // Intentionally do not call addVisionMeasurement() yet.
     }
 
-    // Update AFTER checking for a new button press.
+    // Existing manual initialization button: conservative safeguards restored.
+    // This cannot fix an incorrect initial gyro/field heading by itself.
+    boolean initializePoseRequested =
+        limelightTable.getEntry("initialize_pose").getBoolean(false);
+    boolean initializePressed = initializePoseRequested && !previousInitializePoseRequest;
+    if (initializePressed && DriverStation.isDisabled() && validPose
+        && visionPose != null
+        && visionPose.getX() >= 0.0 && visionPose.getX() <= 4.0
+        && visionPose.getY() >= 0.0 && visionPose.getY() <= 4.0
+        && Math.abs(getState().Pose.getRotation()
+            .minus(visionPose.getRotation()).getDegrees()) < 10.0) {
+        resetPose(visionPose);
+        visionTable.getEntry("InitializePoseAccepted").setBoolean(true);
+    } else if (initializePressed) {
+        visionTable.getEntry("InitializePoseAccepted").setBoolean(false);
+    }
+
+    if (newMt2Measurement) {
+        lastProcessedMt2Timestamp = mt2Timestamp;
+    }
     previousInitializePoseRequest = initializePoseRequested;
 }
 
