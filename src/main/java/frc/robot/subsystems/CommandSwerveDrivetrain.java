@@ -180,16 +180,24 @@ private void configurePathPlanner() {
             () -> getState().Pose,
             this::resetPose,
             () -> getState().Speeds,
-            (speeds, feedforwards) -> setControl(
-                new SwerveRequest.ApplyRobotSpeeds()
-                    .withSpeeds(speeds)
-                    .withWheelForceFeedforwardsX(
-                        feedforwards.robotRelativeForcesXNewtons()
-                    )
-                    .withWheelForceFeedforwardsY(
-                        feedforwards.robotRelativeForcesYNewtons()
-                    )
-            ),
+            (speeds, feedforwards) -> {
+                // Diagnostic only: PathPlanner output, in robot-relative coordinates.
+                // DriveState/Speeds already publishes measured robot-relative speeds.
+                NetworkTable autoTable = NetworkTableInstance.getDefault().getTable("Auto");
+                autoTable.getEntry("CommandedVx").setDouble(speeds.vxMetersPerSecond);
+                autoTable.getEntry("CommandedVy").setDouble(speeds.vyMetersPerSecond);
+                autoTable.getEntry("CommandedOmega").setDouble(speeds.omegaRadiansPerSecond);
+                setControl(
+                    new SwerveRequest.ApplyRobotSpeeds()
+                        .withSpeeds(speeds)
+                        .withWheelForceFeedforwardsX(
+                            feedforwards.robotRelativeForcesXNewtons()
+                        )
+                        .withWheelForceFeedforwardsY(
+                            feedforwards.robotRelativeForcesYNewtons()
+                        )
+                );
+            },
             new PPHolonomicDriveController(
                 new com.pathplanner.lib.config.PIDConstants(5.0, 0.0, 0.0),
                 new com.pathplanner.lib.config.PIDConstants(5.0, 0.0, 0.0)
