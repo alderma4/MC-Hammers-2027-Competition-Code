@@ -4,8 +4,6 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
-
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
@@ -153,8 +151,7 @@ private Command getRotationTestCommand() {
     );
 }
 
-public Command getAutonomousCommand() {
-    return autoChooser.getSelected();
-
-}
+    public Command getAutonomousCommand() {
+        return autoChooser.getSelected();
+    }
 }

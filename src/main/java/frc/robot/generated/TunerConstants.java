@@ -132,7 +132,6 @@ public class TunerConstants {
             .withSteerFrictionVoltage(kSteerFrictionVoltage)
             .withDriveFrictionVoltage(kDriveFrictionVoltage);
 
-
     // Front Left
     private static final int kFrontLeftDriveMotorId = 1;
     private static final int kFrontLeftSteerMotorId = 2;
@@ -208,7 +207,6 @@ public class TunerConstants {
             DrivetrainConstants, FrontLeft, FrontRight, BackLeft, BackRight
         );
     }
-
 
     /**
      * Swerve Drive class utilizing CTR Electronics' Phoenix 6 API with the selected device types.
