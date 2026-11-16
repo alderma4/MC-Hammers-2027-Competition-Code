@@ -2,6 +2,23 @@
 
 This log distinguishes planned work, code/hardware changes, and results verified on the robot. Entries should cite a commit or concrete measurement where possible.
 
+## 2026-11-16 — MegaTag2 diagnostics, pose initialization, and odometry verification
+
+- **Status:** Verified on the practice robot for the tests below. **Continuous vision fusion is not implemented or verified.**
+- **Code checkpoint:** [8f6930f](https://github.com/alderma4/MC-Hammers-2027-Competition-Code/commit/8f6930f) — `Verify MegaTag2 pose initialization and vision diagnostics`.
+- **Setup:** Custom 4 m × 4 m practice field; robot physically placed at (2.0 m, 1.0 m), heading 180°, viewing AprilTag 1. Robot was facing approximately 0° at code deployment, then rotated physically; the Pigeon 2 tracked the rotation, allowing CTRE to report approximately 177.7°.
+- **NetworkTables freshness test:** `Vision/MegaTag2AgeSeconds` remained small while connected; disconnecting Limelight Ethernet caused age to increase; reconnecting returned it to small values. An initial jump into the hundreds of seconds was observed and remains unexplained; do not treat clock/timestamp validation as exhaustive.
+- **Target-validity test:** With no visible tag, `MegaTag2HasTag` and `MegaTag2Valid` were false while updates continued. With Tag 1 visible, the camera reported a valid pose. When the robot later rotated out of tag view using slow teleop, both validity indicators again went false; the last displayed vision pose could remain visible but must not be fused.
+- **Initial position comparison:** With the robot physically at (2.000, 1.000) m and 180°, MegaTag2 reported approximately (1.983, 0.988) m and 177.7°. This is approximately 2.1 cm XY error against the stated physical placement; physical placement precision was not independently measured.
+- **One-time initialization:** Pressing the `initialize_pose` button while disabled was accepted; CTRE `DriveState/Pose` subsequently reported approximately (1.982, 0.988) m, 177.7°. This verifies a successful one-time CTRE pose reset under the tested conditions, **not continuous fusion**.
+- **Translation test:** Slow teleop produced a CTRE change from approximately (1.982, 0.988) m to (2.452, 0.986) m, i.e. +0.470 m X and -0.002 m Y, with heading changing from approximately 177.67° to 177.50°. Exact physical travel distance was not independently measured.
+- **Post-translation vision comparison:** CTRE (2.452, 0.986) m versus MegaTag2 (2.440, 0.977) m; approximately 1.5 cm separation in XY. MegaTag2 receives CTRE's heading, so matching headings are **not independent confirmation** of heading accuracy.
+- **Rotation/tag-loss test:** Slow teleop rotation yielded CTRE approximately (2.465, 0.991) m and 119.0° while the camera lost the tag. CTRE continued tracking rotation with minimal reported XY change.
+- **Troubleshooting lesson:** Earlier startup/orientation tests showed misleading MegaTag1/MegaTag2 disagreement when the field heading was not established correctly. Do not assume robot physical heading and CTRE heading agree after startup. MegaTag2 relies on the heading supplied by CTRE.
+- **Scope of verification:** Single-tag, small-field, short-distance tests only. No proof yet of robustness across headings, speeds, longer paths, tag occlusion/recovery during fusion, or competition field geometry.
+- **Next steps:** (1) Establish an intentional and repeatable starting heading/pose workflow; (2) validate timestamp units and latency/clock conversion before injecting measurements; (3) implement gated continuous MegaTag2 fusion with new-sample, tag-count, freshness and plausibility checks, plus conservative XY uncertainty and negligible vision heading influence; (4) log raw odometry, raw vision, and fused pose separately; (5) test stationary, translation, rotation, tag loss/recovery, and auton.
+- **2027 transition reminders:** Replace custom AprilTag map/field bounds with official 2027 geometry; confirm camera mounting transform and orientation after robot rebuild; remove or reassess practice-only teleop speed limits; update WPILib/vendor libraries and hardware configuration for SystemCore.
+
 ## 2026-11-15 — Classroom teleop speed limits
 
 - **Status:** Implemented in GitHub; **not yet verified on robot**
