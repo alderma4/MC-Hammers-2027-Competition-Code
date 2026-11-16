@@ -2,9 +2,22 @@
 
 This log distinguishes planned work, code/hardware changes, and results verified on the robot. Entries should cite a commit or concrete measurement where possible.
 
+## 2026-11-16 — Continuous MegaTag2 fusion: stationary, translation, tag loss and reacquisition verified
+
+- **Status:** Continuous MegaTag2 XY fusion implemented, compiled, deployed and tested on the practice robot. The current implementation is **practice-only** and requires manual pose initialization plus an explicit fusion-enable switch; autonomous operation with fusion is **not yet tested**.
+- **Code:** `src/main/java/frc/robot/subsystems/CommandSwerveDrivetrain.java`; user reported committing and pushing the tested fusion implementation. The Phoenix 6 swerve **pose estimator** (not a separate CTRE device) receives timestamped MegaTag2 poses via `addVisionMeasurement(...)`.
+- **Fusion safeguards:** `Vision/EnableFusion` explicitly OFF at robot-code startup; `Vision/FusionArmed` becomes true only after disabled-mode `limelight/initialize_pose` is accepted; new NT update, visible tag, finite and recent measurement timestamp/latency, practice-field bounds [0,4] m for X/Y, and less than 0.50 m separation from current estimated position. Vision measurement standard deviations `(0.30 m, 0.30 m, 9999999 rad)` give negligible influence to camera heading. `FusionAcceptedCount` counts calls submitted to the estimator, **not independent internal estimator acceptance**. No separate raw odometry-only pose is currently published.
+- **Starting configuration:** Robot physically placed at approximately (2.0, 1.0) m facing AprilTag 6 at 0°. After deploy, heading was near zero; MegaTag2 reported approximately (2.061, 0.943) m. Disabled-mode initialization was accepted and the pose estimator reset to the camera estimate. Immediately afterward: estimator (2.060, 0.943) m, MegaTag2 (2.065, 0.942) m.
+- **Stationary fusion test:** With fusion enabled, measurement submission count increased; video showed 688 submissions, 0 rejected, and stable nearly coincident poses. A later stationary reading showed estimator (2.062, 0.942) m versus MegaTag2 (2.065, 0.943) m.
+- **Odometry-only translation control test:** With fusion accidentally OFF, robot drove approximately +0.5 m along X. Estimator (2.543, 0.945) m versus MegaTag2 (2.518, 0.943) m, a ~25 mm X discrepancy. Upon enabling fusion without moving or reinitializing, estimator moved to (2.522, 0.942) m while MegaTag2 was (2.520, 0.942) m. Submission count 1,407; rejection count 0. This **directly demonstrates a correction toward the vision estimate**, though it does not establish absolute physical accuracy.
+- **Tag loss and reacquisition:** Slow in-place rotation removed AprilTag from camera view. `MegaTag2HasTag` and `MegaTag2Valid` went false, and submission count stopped at 5,545 despite fusion remaining enabled. Upon turning back toward the tag, fusion resumed automatically without reinitialization; recording showed 5,886 submitted and 0 rejected. A retained last-known plotted MegaTag2 pose is not a valid current detection.
+- **Multidirectional teleop test:** With the tag kept visible, the robot drove forward/backward, sideways, and with gentle rotation. Submissions rose from 14,670 to 16,470 (+1,800); rejection count stayed 0. At end with fusion switched OFF, MegaTag2 reported (1.120, 1.284) m and 0.067 rad; estimator reported (1.126, 1.283) m and 0.067 rad, approximately 6.1 mm XY disagreement. The two estimates are **not independent**, and the result is not a claim of 6 mm field-position accuracy.
+- **Timing observed:** MegaTag2 measurement ages of approximately 0.087–0.114 s during representative tests; these are snapshots, not a full timing validation.
+- **Outstanding limitations / next tests:** (1) deliberate automatic starting pose **and field heading** from selected autonomous path, removing the manual startup ritual; (2) PathPlanner autonomous test with fusion active; (3) verify performance during faster combined translation/rotation, tag transitions, temporary occlusion, and outlier cases; (4) add rejection-reason diagnostics and independent odometry-only pose logging; (5) confirm true physical accuracy against surveyed points; (6) replace practice-only 4 m bounds, custom AprilTag layout, camera mounting transform, and temporary speed settings for the 2027 field/SystemCore transition. The currently reported 0 rejections reflects only tested conditions, not proof the rejection logic catches all bad measurements.
+
 ## 2026-11-16 — MegaTag2 diagnostics, pose initialization, and odometry verification
 
-- **Status:** Verified on the practice robot for the tests below. **Continuous vision fusion is not implemented or verified.**
+- **Status:** Verified on the practice robot for the tests below. **Continuous fusion was not yet implemented at the time of these earlier tests; see the later 2026-11-16 entry above.**
 - **Code checkpoint:** [8f6930f](https://github.com/alderma4/MC-Hammers-2027-Competition-Code/commit/8f6930f) — `Verify MegaTag2 pose initialization and vision diagnostics`.
 - **Setup:** Custom 4 m × 4 m practice field; robot physically placed at (2.0 m, 1.0 m), heading 180°, viewing AprilTag 1. Robot was facing approximately 0° at code deployment, then rotated physically; the Pigeon 2 tracked the rotation, allowing CTRE to report approximately 177.7°.
 - **NetworkTables freshness test:** `Vision/MegaTag2AgeSeconds` remained small while connected; disconnecting Limelight Ethernet caused age to increase; reconnecting returned it to small values. An initial jump into the hundreds of seconds was observed and remains unexplained; do not treat clock/timestamp validation as exhaustive.
@@ -39,11 +52,11 @@ This log distinguishes planned work, code/hardware changes, and results verified
 
 ## Vision localization — work in progress
 
-- **Status:** AprilTag vision experiments conducted; continuous vision fusion **planned, not yet implemented**.
+- **Status:** Continuous MegaTag2 XY fusion implemented and tested on practice robot on 2026-11-16; see dated entry above.
 - **Hardware/setup reported:** Limelight 2+ on front-left of practice robot; custom AprilTag practice layout.
 - **Prior stationary tests reported:** Mean MegaTag2 position error approximately **5.5 cm** across five tests after camera calibration, compared with approximately **17.9 cm** across three earlier tests. These results are specific to the practice setup, not a general accuracy guarantee.
-- **Current distinction:** Raw MegaTag2 pose is displayed for comparison with drivetrain pose. The one-time pose initialization command is not continuous fusion.
-- **Next work:** Add continuous, timestamped vision measurements with quality checks; separately log raw odometry, raw vision, and fused estimate; test stationary, translation, rotation, tag loss/recovery, and autonomous driving.
+- **Current distinction:** Raw MegaTag2 pose and the fused Phoenix 6 pose are displayed; one-time pose initialization is separate from continuous fusion. An independent odometry-only estimate is not yet logged.
+- **Next work:** Test autonomous driving with fusion; implement automatic starting heading/pose; add independent odometry-only logging and further outlier/physical accuracy tests.
 - **Competition transition:** Replace custom field/tag geometry with official 2027 configuration and remeasure camera mounting after robot construction.
 
 ## Next-session checklist
@@ -51,7 +64,8 @@ This log distinguishes planned work, code/hardware changes, and results verified
 - [ ] Pull latest code and deploy classroom speed limits
 - [ ] Verify slow teleop driving and document observations
 - [ ] Decide whether slew-rate limiting is needed
-- [ ] Inspect and implement continuous vision fusion in small, testable steps
+- [x] Implement and test guarded continuous vision fusion (stationary, teleop, tag loss/recovery)
+- [ ] Test autonomous driving with fusion and deliberate starting heading/pose
 - [ ] Log test results and any new competition-transition tasks
 
 ## 2026-11-15 — Required opposite-facing AprilTag localization test
