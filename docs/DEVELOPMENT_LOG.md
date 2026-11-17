@@ -1,5 +1,17 @@
 # MC Hammers 2027 Development Log
 
+## 2026-11-17 — Drive velocity feedforward and short autonomous repeatability
+
+- **Status:** Practice-robot testing completed for the measurements below. SysId characterization is **planned, not yet run**. No claim of fully tuned feedforward or corrected lateral drift.
+- **Starting problem:** A PathPlanner 0.50 m straight autonomous undershot physical distance by approximately 3 cm. Investigated drive velocity closed-loop behavior and static feedforward rather than assuming the path geometry was wrong.
+- **Drive constants reported in `TunerConstants.java`:** `kS = 0.20 V` (changed from 0), `kV = 0.124 V/(rotor rps)`, `kA = 0`, `kP = 0.1`, `kI = 0`, `kD = 0`. Verify the checked-in file before assuming these values are already committed.
+- **Diagnostic method:** One-second robot-centric closed-loop velocity requests; compared commanded rotor speed against measured rotor speed using Phoenix Tuner logs. At 0.20 m/s, target approximately 3.30 rotor rps. With `kS=0`, measured approximately 2.12 rps (64%). With `kS=0.20`, three measurements were 2.83, 2.79 and 3.04 rps (approximately 86%, 85%, 92%). At 0.40 m/s, target approximately 6.60 rotor rps; measured 6.32, 6.21 and 6.19 rps (approximately 94–96%). These are short-run measurements, not SysId results.
+- **Path retest:** Three physical 0.50 m autonomous runs measured approximately **50.0, 49.5, and 49.0 cm** forward (mean 49.5 cm), with approximately **1 cm sideways drift**. AdvantageScope ending pose approximately X=2.495 m versus target 2.500 m, Y=1.000 m versus target 1.000 m, heading -0.057°. The reported estimator Y does not establish absence of physical sideways drift.
+- **Open diagnostic:** Check that carpet marks / starting alignment are square before changing steering or path tuning to address the ~1 cm drift. Preserve today's working settings and distinguish physical measurements from estimated pose.
+- **Planned SysId task (not immediate):** Inspect actual Phoenix 6 drivetrain SysId routines and controller bindings; preserve current gains; verify logging and units; configure conservative voltage, ramp, duration and emergency stop appropriate to approximately 4 m of carpet; safely run quasistatic and dynamic translation tests in both directions; inspect data quality and estimate `kS`, `kV`, `kA`; compare to current values and validate on repeatable autonomous tests before adopting changes. Do not assume generated defaults are safe for the available travel. Repeat characterization after representative competition mass, mechanisms and bumpers are installed.
+- **Priorities:** Continue autonomous localization/start-pose investigation and vision-fusion reliability work. SysId remains a deliberate future task, not a reason to interrupt that work.
+- **Next session:** Pull the latest documentation before working; verify whether today's local `TunerConstants.java` changes were committed/pushed separately. This documentation update does **not** itself change robot code.
+
 This log distinguishes planned work, code/hardware changes, and results verified on the robot. Entries should cite a commit or concrete measurement where possible.
 
 ## 2026-11-16 — PathPlanner autonomous with vision fusion; repeatability and position-offset investigation
