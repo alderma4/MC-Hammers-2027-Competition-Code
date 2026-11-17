@@ -11,6 +11,8 @@ import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
@@ -189,6 +191,7 @@ private void configurePathPlanner() {
                 autoTable.getEntry("CommandedOmega").setDouble(speeds.omegaRadiansPerSecond);
                 setControl(
                     new SwerveRequest.ApplyRobotSpeeds()
+                        .withDriveRequestType(DriveRequestType.Velocity)
                         .withSpeeds(speeds)
                         .withWheelForceFeedforwardsX(
                             feedforwards.robotRelativeForcesXNewtons()

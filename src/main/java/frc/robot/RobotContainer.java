@@ -45,6 +45,7 @@ public RobotContainer() {
     configureBindings();
 
     autoChooser.setDefaultOption("90 Degree Rotation Test", getRotationTestCommand());
+    autoChooser.addOption("Velocity Test - 0.40 m/s", getVelocityTestCommand());
     autoChooser.addOption("PathPlanner - Forward 0.5 Meter",AutoBuilder.buildAuto("ForwardHalfMeterAuto"));
     autoChooser.addOption("PathPlanner - Strafe Left 1 Meter",AutoBuilder.buildAuto("StrafeLeft1MeterAuto"));
     autoChooser.addOption("PathPlanner - S-Curve",AutoBuilder.buildAuto("S-CurvedAuto"));
@@ -87,6 +88,30 @@ public RobotContainer() {
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
+
+private Command getVelocityTestCommand() {
+    // Test the drivetrain at a constant 0.40 m/s.
+    final var testDrive = new SwerveRequest.RobotCentric()
+        .withDriveRequestType(DriveRequestType.Velocity);
+
+    final var idle = new SwerveRequest.Idle();
+
+    return Commands.sequence(
+        Commands.print("VELOCITY TEST STARTED"),
+
+        // Drive forward for exactly 1 second.
+        drivetrain.applyRequest(() ->
+            testDrive.withVelocityX(0.40)
+                .withVelocityY(0.0)
+                .withRotationalRate(0.0)
+        ).withTimeout(1.0),
+
+        Commands.print("VELOCITY TEST COMPLETE"),
+
+        // Keep the drivetrain idle until autonomous ends.
+        drivetrain.applyRequest(() -> idle)
+    );
+}
 
 private Command getRotationTestCommand() {
     System.out.println("AUTONOMOUS COMMAND REQUESTED!");
