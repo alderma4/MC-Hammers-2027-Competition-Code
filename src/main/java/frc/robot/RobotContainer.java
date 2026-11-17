@@ -47,7 +47,7 @@ public RobotContainer() {
     autoChooser.setDefaultOption("90 Degree Rotation Test", getRotationTestCommand());
     autoChooser.addOption("PathPlanner - Forward 0.5 Meter",AutoBuilder.buildAuto("ForwardHalfMeterAuto"));
     autoChooser.addOption("PathPlanner - Strafe Left 1 Meter",AutoBuilder.buildAuto("StrafeLeft1MeterAuto"));
-    autoChooser.addOption("PathPlanner - S-Curved Auto",AutoBuilder.buildAuto("S-CurvedAuto"));
+    autoChooser.addOption("PathPlanner - S-Curve",AutoBuilder.buildAuto("S-CurvedAuto"));
     SmartDashboard.putData("Auto Selector", autoChooser);
 }
 
