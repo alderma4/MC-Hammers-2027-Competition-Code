@@ -45,7 +45,7 @@ public RobotContainer() {
     configureBindings();
 
     autoChooser.setDefaultOption("90 Degree Rotation Test", getRotationTestCommand());
-    autoChooser.addOption("Velocity Test - 0.40 m/s", getVelocityTestCommand());
+    autoChooser.addOption("Velocity Test - -0.40 m/s", getVelocityTestCommand());
     autoChooser.addOption("PathPlanner - Forward 0.5 Meter",AutoBuilder.buildAuto("ForwardHalfMeterAuto"));
     autoChooser.addOption("PathPlanner - Strafe Left 1 Meter",AutoBuilder.buildAuto("StrafeLeft1MeterAuto"));
     autoChooser.addOption("PathPlanner - S-Curve",AutoBuilder.buildAuto("S-CurvedAuto"));
@@ -90,25 +90,23 @@ public RobotContainer() {
     }
 
 private Command getVelocityTestCommand() {
-    // Test the drivetrain at a constant 0.40 m/s.
-    final var testDrive = new SwerveRequest.RobotCentric()
-        .withDriveRequestType(DriveRequestType.Velocity);
+    // Point all four wheels straight ahead (0 degrees).
+    // Do not spin the drive motors.
+    final var pointStraight = new SwerveRequest.PointWheelsAt()
+        .withModuleDirection(Rotation2d.fromDegrees(0.0));
 
     final var idle = new SwerveRequest.Idle();
 
     return Commands.sequence(
-        Commands.print("VELOCITY TEST STARTED"),
+        Commands.print("STEERING TEST STARTED"),
 
-        // Drive forward for exactly 1 second.
-        drivetrain.applyRequest(() ->
-            testDrive.withVelocityX(0.40)
-                .withVelocityY(0.0)
-                .withRotationalRate(0.0)
-        ).withTimeout(1.0),
+        // Hold all four wheels at 0 degrees for 5 seconds.
+        drivetrain.applyRequest(() -> pointStraight)
+            .withTimeout(5.0),
 
-        Commands.print("VELOCITY TEST COMPLETE"),
+        Commands.print("STEERING TEST COMPLETE"),
 
-        // Keep the drivetrain idle until autonomous ends.
+        // Stop commanding the modules.
         drivetrain.applyRequest(() -> idle)
     );
 }
