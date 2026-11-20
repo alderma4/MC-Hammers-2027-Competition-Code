@@ -1,5 +1,27 @@
 # MC Hammers 2027 Development Log
 
+## 2026-11-20 — Four-meter tile autonomous trials (east and west)
+
+- **Status:** Six physical 4.0 m PathPlanner tests completed on tile: three heading west and three heading east. Robot heading appeared stable when compared to tile floor lines, but gyro heading was not quantitatively measured. **Carpet interaction is a strong working explanation for the earlier large lateral drift; carpet nap specifically is not proven.**
+- **Reference:** X below is measured travel distance along the intended direction, reported as a positive magnitude. Y was measured **relative to the robot**, not the field: negative = robot's right, positive = robot's left. Consequently westbound negative Y and eastbound positive Y both point roughly north in room coordinates. Nominal 4.000 m = 157.48 inches.
+
+| Trial | Travel direction | Physical X (in) | X error (in; actual minus target) | Robot-relative Y (in) |
+| --- | --- | ---: | ---: | ---: |
+| 1 | West | 155.50 | -1.98 | -0.50 |
+| 2 | West | 155.25 | -2.23 | -0.50 |
+| 3 | West | 155.25 | -2.23 | -1.00 |
+| 1 | East | 155.75 | -1.73 | +0.25 |
+| 2 | East | 156.25 | -1.23 | +1.00 |
+| 3 | East | 156.25 | -1.23 | 0.00 |
+
+- **Westbound averages:** Forward 155.33 in = 3.9455 m; 2.15 in (5.45 cm) short; robot-right lateral drift 0.67 in (1.69 cm).
+- **Eastbound averages:** Forward 156.08 in = 3.9645 m; 1.40 in (3.55 cm) short; robot-left lateral drift 0.42 in (1.06 cm).
+- **Combined averages:** Forward 155.71 in = 3.9550 m, about 4.50 cm or 1.13% short of 4 m. Mean **absolute** lateral displacement 0.542 in = 1.38 cm per 4 m run, approximately 0.34 cm per meter. Do not average opposite robot-relative Y signs without converting coordinates.
+- **Carpet comparison:** The earlier continuous 2 m carpet test exhibited ~7 cm physical sideways drift (~3.5 cm/m); the tile mean absolute lateral drift was ~0.34 cm/m, approximately **90% less per meter**. Distances, path profiles and surfaces were not identical, so this is a descriptive comparison rather than a tightly controlled effect size. The reduced drift supports a surface-dependent mechanism, **not proof of directional carpet pile**. More precise determination would require a repeatable same-path/speed comparison and/or controlled orientation of carpet grain.
+- **Forward distance:** All six tile runs were consistently somewhat short; do not change calibration or PID without investigating path length, command profile, final measured pose and slip. End heading was judged visually only.
+- **Code push:** [0611727](https://github.com/alderma4/MC-Hammers-2027-Competition-Code/commit/06117275aab030d04ecb269819fc2e082a116698) (`updated pathplanner pasths and names`) pushed November 20. It renames the chooser's PathPlanner test to **Forward 4 Meter**, uses `Forward4MeterAuto` and `Forward4MeterPath`, renames the curved chooser option to **Curved**, and updates related PathPlanner names. The 4 m path in this commit runs from (2,1) to (6,1) in field coordinates. This commit does **not** validate any measured robot behavior by itself. The hard-coded chooser entry `Velocity Test - -0.40 m/s` still points to a five-second 0° steering test and remains misleading; rename when convenient.
+- **Decision / next work:** Avoid further steering tuning based on these measurements alone. Record carpet as likely responsible for much of the unexpected lateral displacement, but not fully diagnosed. Resume AprilTag practice-field stands, camera mount replacement/transform measurement, reliable pose initialization and continuous MegaTag2 fusion; later compare physically measured path tracking with fusion ON versus OFF. Document fusion state and actual measured distances during future tests. Revisit consistent ~4.5 cm forward shortfall on the long path only if relevant to required autonomous accuracy.
+
 ## 2026-11-19 — Steering verification, PathPlanner distance accuracy, and unexplained carpet-direction drift
 
 - **Status:** Steering and autonomous movement were **tested on the practice robot**. Accurate forward displacement was physically verified in the stated tests. Substantial physical lateral drift was observed that the logged CTRE estimated pose did not reflect. **Carpet nap / traction is a leading hypothesis, not a confirmed root cause. Tile testing was planned but NOT performed as of this entry.** Do not mark lateral tracking or localization as resolved.
