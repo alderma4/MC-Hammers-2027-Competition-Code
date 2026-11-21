@@ -81,3 +81,42 @@ Define precise patterns/brightness later with CANdle hardware and event rules. D
 - Nov 19: steering offsets and carpet-loaded steering verified sufficiently to proceed; substantial physical lateral carpet drift was not reflected by CTRE estimated Y.
 - Nov 20: six 4 m tile trials had considerably less sideways drift than carpet, supporting surface influence; the exact source of carpet interaction remains unconfirmed.
 - **This document is a future implementation plan only. No code was changed and no readiness system is yet verified.** Maintain a dated development log entry when any feature is implemented and physically tested.
+
+## 8. Elastic dashboard communication — essential match-day requirement (2026-11-21 decision)
+
+**Priority: CRITICAL / REQUIRED. Status: Planned; no widget or code implementation has been verified yet.**
+
+The driver-station student is the communication link between the robot and the students positioning it on the carpet. **Elastic is the primary human-facing dashboard for autonomous setup**. The ordinary FRC Driver Station remains responsible for connection, enable/disable, FMS status, and standard diagnostics; do not make the team interpret console messages or depend on a separate terminal for routine readiness. Publish status via NetworkTables in a form Elastic can display clearly. Both the dashboard and the CANdle LED system must derive from the **same authoritative readiness calculation**, not independent ad hoc checks.
+
+### Proposed always-visible Elastic "Autonomous Readiness" area
+
+Place this prominently alongside the working SendableChooser:
+
+- **Large, persistent headline:** `INITIALIZING`, `NOT READY — MOVE ROBOT`, `WAITING FOR VALID VISION`, `GYRO/HEADING UNVERIFIED`, `READY FOR SELECTED AUTON`, or `COMMUNICATION LOST`. This must be easy to read at a glance.
+- **Selected autonomous and alliance:** Human-readable active selection and expected field/alliance interpretation, including an obvious warning for unknown or changed selection.
+- **Actionable placement guidance:** For example `12 cm too far right` or `heading 3° clockwise from target`, **only when robot coordinate frame, pose source and certainty make the guidance trustworthy**. Otherwise say `position unknown — wait for localization` instead of giving fabricated directions. Guidance should not assume the driver-station student is standing behind the robot; clearly define field-relative wording.
+- **Robot health:** Pigeon 2 communication and heading-reference validity separately; CANcoder/module checks and other required sensors; camera connection, valid recent AprilTag detections, timestamp/freshness/quality; fusion state; selected routine's start-region and heading-tolerance checks.
+- **Detailed reasons for failure:** Display the top blocking problem and additional active blockers; student can verbally relay the appropriate action to the field crew (e.g. `move left`, `rotate slightly`, `wait for camera`). If not safely actionable, say so.
+- **Target vs measured pose and error:** X, Y, heading, position error, acceptable tolerance and age/quality of position measurement for advanced diagnosis without cluttering the main READY/NOT READY message.
+- **A communications freshness signal:** Show last robot status update age or equivalent heartbeat. A disconnected dashboard must **not remain green** on stale cached NetworkTables values; use Elastic-side freshness/connection handling in addition to robot heartbeat and prove it works during a deliberate disconnect.
+- **Readiness transition history or optional warnings:** A secondary diagnostics area may show state changes and operator-facing alerts. Persistent state is mandatory; fleeting popup notifications are optional and must **not** be the only warning mechanism.
+
+### Communication flow and division of responsibilities
+
+1. The driver selects the auto in Elastic. The dashboard displays it; robot-side readiness logic verifies the selected routine and its expected start.
+2. Field crew places and powers on the disabled robot. An amber boot/checking indication should appear as soon as hardware permits, with a matching dashboard message once connected.
+3. The robot evaluates pose, fresh vision, sensors, alliance, and selected-start tolerances automatically, without student calibration buttons.
+4. The dashboard student communicates specific useful corrections to the crew. When placement and data quality satisfy *all* requirements, both dashboard and LEDs indicate ready.
+5. If any required check fails or auto selection/pose changes, both displays immediately revoke ready. FMS/Driver Station connection and legal match-start readiness remain separately necessary.
+6. Crew exits the field in accordance with event procedures. At autonomous initialization, the robot rechecks conditions and follows an explicitly verified fallback policy rather than trusting a stale green indicator.
+
+### Technical approach and tests
+
+- Start by publishing simple `AutonReadiness/State`, `AutonReadiness/Message`, `AutonReadiness/SelectedAuto`, `AutonReadiness/Alliance`, `AutonReadiness/Blockers`, and `AutonReadiness/Heartbeat` (example proposed topic names; adapt to existing telemetry) from robot code. Show them as large text and diagnostic widgets in Elastic.
+- For persistent warnings, evaluate WPILib `Alert` with Elastic's Alerts widget; use any supported popup notification mechanism only for optional secondary transitions. Verify actual installed Elastic version/widget behavior before claiming an integration is working.
+- Implement one structured evaluator producing status + reason codes + timestamp; dashboard and LED presenters simply display it. Separate initializing, not-ready, ready, communication-lost and any intentionally approved fallback status. Ensure no green based solely on seeing a tag.
+- Verify cold boot, late network connection, change of chooser selection, camera unplug/stale sample, Pigeon/heading failure, carry/reposition while disabled, alliance switch, and a deliberate NetworkTables disconnect while the last state was green. Confirm that both Elastic and LEDs show accurate, nonmisleading results.
+- First December success criterion: a driver-station student can correctly identify **what is wrong and what the field crew should do** using Elastic alone, without asking another student to press a button on the robot. A later milestone adds automatic robust pose initialization and measured tracking validation.
+
+**Operational commitment:** The robot tells the laptop student what is happening; the laptop student verbally guides the field crew. No reliance on hidden console logging, disappearing notifications, or memorized calibration rituals. A dashboard can never substitute for the official Driver Station/FMS connection and enable-state indications.
+
