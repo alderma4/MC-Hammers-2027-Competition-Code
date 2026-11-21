@@ -46,5 +46,6 @@ The REV Power Distribution Hub (PDH) is not included in the 14-device CAN count;
 
 - [Development process](docs/DEVELOPMENT_PROCESS.md): how we document hardware, code, testing, and verification.
 - [Development log](docs/DEVELOPMENT_LOG.md): changes, test results, next steps, and practice-to-competition transition reminders.
+- [Autonomous readiness and match startup plan](docs/AUTONOMOUS_READINESS_PLAN.md): selected-auton start-pose checks, AprilTag/gyro readiness, CANdle status LEDs, Elastic driver communication, and December prototype milestones.
 
 **Status convention:** Planned = not built/coded; Implemented = built/coded but not yet verified; Verified = tested with recorded results.
