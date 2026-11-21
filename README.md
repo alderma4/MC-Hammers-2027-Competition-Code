@@ -11,6 +11,7 @@ This section documents the current offseason practice robot configuration. Hardw
 - **Absolute encoders:** 4 CTRE CANcoders
 - **Gyroscope:** CTRE Pigeon 2
 - **LED controller:** CTRE CANdle
+- **AprilTag/Vision Camera:** LimeLight 2+
 - **Wheel diameter:** 4 inches
 - **Drive gear ratio:** 5.2734375:1
 - **Steering gear ratio:** 26.0909:1
