@@ -60,6 +60,7 @@ Define precise patterns/brightness later with CANdle hardware and event rules. D
 | Late November | Rebuild robust Limelight mount; build AprilTag stands and verify custom map, camera pose and physical tag positions | Fixed camera transform and surveyed reference tests; known good tag visibility | Planned |
 | Early December | Read selected auto and alliance; declare start pose/allowed region; implement basic sensor and camera health diagnostics | Select different autos and move robot while disabled; readiness conditions change appropriately | Planned |
 | Mid December | Implement CANdle readiness indications and Elastic reason codes; stabilize fresh-pose checks | Cold-boot, no-tag, wrong-start and moved-robot tests; no falsely reassuring green | Planned |
+| Dec. 3 purchase; mid-Dec. possible arrival | Begin **parallel, bench-only SystemCore bring-up**, subject to actual delivery; do not retire the roboRIO practice robot | Safe aluminum mounting, power/boot, communication, deployment, and isolated CAN device test | Planned |
 | Late December | Prototype automatic starting heading/pose initialization and PathPlanner reset/fusion coordination for a selected practice-field auto | Repeat controlled autonomous runs from several acceptable starting poses, compare independent physical errors, confirm safe behavior when not ready | Stretch goal; planned |
 | January / post-kickoff | Update 2027 field layout, real selected autos, legal start regions, new camera placement and SystemCore/WPILib/vendor versions | Full revalidation on 2027 robot and field-like geometry, plus field/lighting conditions | Required transition |
 | Before first event | Match-rehearsal workflow with students, boot timing, lost tags and selected-auto changes, alliance red/blue, safe failure handling | Written checklist and documented repeated tests; event-rule compliance | Required transition |
@@ -120,3 +121,11 @@ Place this prominently alongside the working SendableChooser:
 
 **Operational commitment:** The robot tells the laptop student what is happening; the laptop student verbally guides the field crew. No reliance on hidden console logging, disappearing notifications, or memorized calibration rituals. A dashboard can never substitute for the official Driver Station/FMS connection and enable-state indications.
 
+
+## 9. Parallel December workstream: SystemCore bench bring-up (2026-11-22 decision)
+
+- One SystemCore is **planned for purchase on December 3, 2026**. Receipt by mid-December is possible, not confirmed; if delayed, bring-up moves to January rather than compressing safety tests.
+- Establish a standalone bench setup, mounted on a 1/8-inch aluminum plate for conductive heat spreading, without disturbing the working roboRIO practice drivetrain.
+- December success is a controlled initial boot, safe powered setup, network and Driver Station/Elastic communication, minimal deployment, and (if time permits) an isolated CAN/sensor test; full swerve migration remains a January decision.
+- Continue AprilTag field, Limelight mount, vision and automatic readiness work in parallel. Do not let controller migration consume our December localization momentum.
+- See the detailed [SystemCore Bench Bring-Up and Transition Plan](SYSTEMCORE_BRINGUP_PLAN.md) for the schedule, safety checks, dependencies, and verification criteria.
