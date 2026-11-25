@@ -1,5 +1,14 @@
 # MC Hammers 2027 Development Log
 
+## 2026-11-25 — 2027 field coordinate-system change added to migration plan
+
+- **Status:** Documented/planned; no robot code or working practice-field configuration changed.
+- **Source:** [AdvantageScope coordinate systems](https://docs.advantagescope.org/more-features/coordinate-systems/) describes **Center/Red (Systemcore)** as the default FRC 2027 coordinate frame, replacing 2023–2026 Blue Wall.
+- **Risk:** Mixed 2026 and 2027 field frames can produce incorrect XY/heading, tag-fusion jumps, wrong PathPlanner paths and falsely reassuring auton-readiness LEDs.
+- **Decision:** Continue existing offseason 4 × 4 m practice-map tests unchanged; before competition integration, confirm final WPILib, CTRE/Phoenix 6, Limelight and PathPlanner conventions and physically verify field frames, heading, both alliances and selected-auto start poses.
+- **References:** [SystemCore/2027 coordinate migration checklist](SYSTEMCORE_BRINGUP_PLAN.md#2027-centerred-field-coordinate-migration-required-january-checkpoint-2026-11-25) and [Autonomous Readiness gate](AUTONOMOUS_READINESS_PLAN.md#10-2027-centerred-coordinate-frame-migration-readiness-safety-gate-2026-11-25).
+
+
 ## 2026-11-20 — Four-meter tile autonomous trials (east and west)
 
 - **Status:** Six physical 4.0 m PathPlanner tests completed on tile: three heading west and three heading east. Robot heading appeared stable when compared to tile floor lines, but gyro heading was not quantitatively measured. **Carpet interaction is a strong working explanation for the earlier large lateral drift; carpet nap specifically is not proven.**
