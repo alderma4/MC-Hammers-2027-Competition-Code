@@ -52,3 +52,21 @@ If shipping is delayed, keep the milestone order but slide SystemCore tasks into
 - [README](../README.md): Current hardware reference remains the **roboRIO practice robot** until SystemCore is truly integrated and verified.
 
 **Current status:** Planning only; no SystemCore hardware, firmware, network, CAN or robot-code test has been reported as performed here.
+
+## 2027 Center/Red field coordinate migration (required January checkpoint; 2026-11-25)
+
+**Status: Planned, not implemented or tested.** [AdvantageScope's coordinate-system reference](https://docs.advantagescope.org/more-features/coordinate-systems/) says **Center/Red (Systemcore)** is the default for FRC beginning in 2027: origin at field center, **+X away from the red wall**, **+Y left of +X**. The 2023–2026 **Blue Wall** frame instead had its origin at the rightmost blue-wall corner, +X toward red, +Y left of +X. The change affects coordinates **and orientation**; updating a display alone does not convert data.
+
+**Keep the existing 4 × 4 m offseason practice field and code in their known working Blue-frame setup until current MegaTag2 validation is complete.** January migration must be deliberate, not an untested alpha-library assumption.
+
+### Required integration checks
+
+1. Confirm final 2027 WPILib, Phoenix 6/SystemCore, PathPlanner, Limelight and AdvantageScope versions and official field/AprilTag coordinate definitions; document the frame **each API actually uses**. Alpha versions may differ.
+2. Adopt one authoritative field frame. Explicitly convert legacy pose sources, including Limelight `botpose_orb_wpiblue` if it still reports Blue-wall coordinates, before fusion with any Center/Red estimator. Verify tag positions **and rotations**, offsets, units and heading, not just X/Y.
+3. Verify Pigeon/CTRE absolute field heading, operator perspective, angle conventions, red/blue alliance transforms and 180-degree rotations; MegaTag2 inherits supplied robot heading and cannot independently verify it.
+4. Convert/rebuild PathPlanner field geometry, starting poses, navgrid obstacles, pathfinding targets, `resetOdom` behavior and alliance flipping; never mix frame conventions.
+5. Configure AdvantageScope to match actual data coordinates and check visually against surveyed real field points; a correct-looking display alone is not proof.
+6. Test surveyed robot placements, both alliance directions, opposite-facing tag acquisition, short disabled rotations and carefully supervised short paths. Log raw vision, fused CTRE estimate, path targets and physical measurements.
+7. **Block precision autonomous readiness and green LEDs** until all frame checks pass; provide clear Elastic warnings for unknown or inconsistent frame/heading.
+
+**Exit criterion:** Limelight, CTRE pose, PathPlanner start/target poses, and AdvantageScope represent the *same physical robot position and heading* under the documented 2027 frame. This applies regardless of controller hardware.
