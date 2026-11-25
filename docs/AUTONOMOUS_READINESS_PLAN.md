@@ -129,3 +129,11 @@ Place this prominently alongside the working SendableChooser:
 - December success is a controlled initial boot, safe powered setup, network and Driver Station/Elastic communication, minimal deployment, and (if time permits) an isolated CAN/sensor test; full swerve migration remains a January decision.
 - Continue AprilTag field, Limelight mount, vision and automatic readiness work in parallel. Do not let controller migration consume our December localization momentum.
 - See the detailed [SystemCore Bench Bring-Up and Transition Plan](SYSTEMCORE_BRINGUP_PLAN.md) for the schedule, safety checks, dependencies, and verification criteria.
+
+## 10. 2027 Center/Red coordinate-frame migration: readiness safety gate (2026-11-25)
+
+**Status: PLANNED.** AdvantageScope documents **Center/Red (Systemcore)** as the FRC field default for 2027 onward: origin at field center, +X away from the red wall, +Y to the left. This differs from the former Blue Wall origin and +X direction. [Source](https://docs.advantagescope.org/more-features/coordinate-systems/).
+
+Keep current practice-field localization tests in the consistent existing frame. During the January transition, confirm each installed WPILib, CTRE/Pigeon, Limelight/AprilTag, PathPlanner, and AdvantageScope coordinate convention and convert where necessary. **Do not silently combine legacy `botpose_orb_wpiblue` with a Center/Red field pose or assume the 2027 alpha libraries have all migrated.** Verify field heading, tag map, alliance flips, chosen autonomous start tolerance, navgrid and pose-reset behavior against measured landmarks and safe physical tests.
+
+**Required for green LEDs:** verified agreement on field coordinate system *and* robot heading across raw vision, fused estimate, selected auto and dashboard. Otherwise display NOT READY with a coordinate/heading warning. See [detailed migration checklist](SYSTEMCORE_BRINGUP_PLAN.md#2027-centerred-field-coordinate-migration-required-january-checkpoint-2026-11-25).
